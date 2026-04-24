@@ -136,17 +136,25 @@ retention-aware pair path:   0.414 ms
 
 This is not a model-quality benchmark. It is a sanity check for the primitive itself before wiring the method into a fuller cache-compression path.
 
-## What is not implemented yet
+## What next
 
-The repo does not yet reproduce the full official evaluation stack. Missing pieces include:
+This first pass gives me a tested tensor primitive. The next notes should move from the primitive toward something closer to an inference system.
 
-- integration with an actual transformer generation loop
-- quality evaluation on downstream tasks
-- layer selection policy across a full model
-- comparison against quantization, sparsity, or token-eviction baselines
-- GPU benchmark tables across realistic sequence lengths
+The sequence I want to build next:
 
-That boundary is intentional. The first goal is a readable primitive with tests. The next goal is to connect that primitive to a real cache object and measure it under more realistic decode conditions.
+1. **Cache object integration**  
+   Wrap the pairwise primitive in a small KV-cache object so the code looks more like a decode-time path instead of a standalone tensor function.
+
+2. **Layer selection policy**  
+   Decide which adjacent layers are candidates for merging, and make that policy visible in the API.
+
+3. **Decode benchmark**  
+   Measure the compression path across longer sequence lengths and show the memory / latency tradeoff in a small table.
+
+4. **PrefixKV track**  
+   Start the next paper note around token retention for vision-language prompts, then define the smallest PyTorch primitive worth implementing.
+
+The point of the series is to keep each step reproducible: one mechanism, one implementation boundary, one command someone else can run.
 
 ## Sources
 
