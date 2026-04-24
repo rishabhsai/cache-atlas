@@ -1,0 +1,210 @@
+---
+layout: ../../layouts/Layout.astro
+title: Why KV cache papers matter - Cache Atlas
+---
+
+import CacheBudgetDemo from "../../components/CacheBudgetDemo";
+
+<main class="article-shell">
+
+<div class="eyebrow">note 01</div>
+
+# Why KV cache papers matter
+
+The important shift is this:
+
+> as context windows grow, cache memory becomes a product constraint, not just a systems detail
+
+That is why the last stretch of serving papers keeps circling the same family of ideas:
+
+- compress the cache
+- evict part of the cache
+- allocate the cache unevenly across layers
+- specialize the policy for vision-language models
+
+I started with this map because the individual papers make more sense once the cache itself is treated as a product constraint.
+
+<div class="meta-grid">
+  <div class="meta-cell">
+    <strong>first implementation</strong>
+    MiniCache
+  </div>
+  <div class="meta-cell">
+    <strong>paper</strong>
+    <a class="inline-link" href="https://arxiv.org/abs/2405.14366" target="_blank" rel="noreferrer">arXiv:2405.14366</a>
+  </div>
+  <div class="meta-cell">
+    <strong>next note</strong>
+    <a class="inline-link" href="/notes/minicache-paper-notes">MiniCache paper notes</a>
+  </div>
+</div>
+
+<figure class="video-figure">
+  <video autoPlay loop muted playsInline controls preload="metadata">
+    <source src="/media/minicache-depth-axis.mp4" type="video/mp4" />
+  </video>
+  <figcaption>
+    One way to read the space: most cache work compresses or drops tokens along sequence length, while MiniCache asks what can be compressed across depth.
+  </figcaption>
+</figure>
+
+## The KV cache is not optional
+
+Autoregressive decoding without a cache is the obvious baseline and the wrong product system.
+
+Every generated token would force the model to recompute key and value state for the entire existing prefix. That makes decode cost grow with sequence length even when almost all of the old state is unchanged.
+
+The cache fixes that by storing old key and value tensors so later decode steps mainly append new state instead of rebuilding the past. The result is the modern serving stack:
+
+- prefill builds cache state from the prompt
+- decode reuses that state one token at a time
+
+The catch is that the cache itself gets expensive fast.
+
+## Why the memory bill gets ugly
+
+Cache size grows with several things at once:
+
+- number of layers
+- number of heads or KV groups
+- hidden dimensions
+- sequence length
+- batch size
+
+That is why serving teams keep running into the same practical problem:
+
+> the model still fits, but throughput collapses because memory traffic and cache footprint dominate decode
+
+This is also why there is not one single “KV cache paper.” There is a whole cluster of them.
+
+## The main paper buckets
+
+The easiest way to organize the space is by the axis they attack.
+
+### 1. Token-axis compression and eviction
+
+These papers ask:
+
+> which old tokens are worth keeping?
+
+Examples:
+
+- <a class="inline-link" href="https://arxiv.org/abs/2412.03409" target="_blank" rel="noreferrer">PrefixKV</a>
+- <a class="inline-link" href="https://arxiv.org/abs/2503.12491" target="_blank" rel="noreferrer">CAKE</a>
+
+This is especially natural for long prompts and vision-language models, where different parts of the prefix are not equally valuable.
+
+### 2. Depth-axis compression
+
+These papers ask:
+
+> how much redundancy exists across layers?
+
+This is the lane that made MiniCache interesting enough to start with. Instead of only asking which tokens to keep, it asks whether nearby layers carry overlapping information that can be compressed more directly.
+
+### 3. Architecture-specific cache policies
+
+These papers ask:
+
+> if the model is multimodal or has uneven layer behavior, should the cache budget be allocated differently?
+
+That is why PrefixKV is compelling even though it is not my first implementation target. It sits right at the intersection of cache policy and vision-language generation.
+
+## Why I started with MiniCache
+
+MiniCache is a good first implementation target because the core mechanic can be isolated without reproducing an entire serving stack.
+
+The paper:
+
+- <a class="inline-link" href="https://arxiv.org/abs/2405.14366" target="_blank" rel="noreferrer">MiniCache: KV Cache Compression in Depth Dimension for Large Language Models</a>
+
+Supporting links:
+
+- <a class="inline-link" href="https://minicache.vmv.re/" target="_blank" rel="noreferrer">official project page</a>
+- <a class="inline-link" href="https://github.com/AkideLiu/MiniCache" target="_blank" rel="noreferrer">official GitHub repo</a>
+
+Why it works as a first reproduction:
+
+- cleaner scope than PrefixKV
+- does not require starting in VLM adapter hell
+- easier to isolate the method itself
+- still rich enough for diagrams, demos, and benchmarks
+
+Tradeoffs:
+
+- it is less visually flashy than PrefixKV
+- it is not the strongest “image demo” paper
+
+That tradeoff is acceptable for this project because the goal is to publish code that is readable, testable, and easy to extend.
+
+<figure class="video-figure">
+  <video autoPlay loop muted playsInline controls preload="metadata">
+    <source src="/media/minicache-layer-merge.mp4" type="video/mp4" />
+  </video>
+  <figcaption>
+    The implementation intuition: if middle and deep layers are partially redundant, there is room to compress cache state across depth instead of only pruning tokens.
+  </figcaption>
+</figure>
+
+## What the public artifacts add
+
+The explanation site and implementation package have different jobs.
+
+### Hub repo: Cache Atlas
+
+Cache Atlas adds:
+
+- the explanation
+- the diagrams
+- the animation
+- the interactive demo
+- the paper comparison layer
+
+### Standalone repo: minicache-pytorch
+
+`minicache-pytorch` adds:
+
+- a clean-room reference implementation
+- a usable API
+- tight tests
+- benchmark scripts
+- a README that reads like a good lucidrains repo, not like a paper appendix
+- enough structure to grow cleanly, borrowing the packaging discipline of repos like `ml-intern` without copying its agent architecture
+
+That split keeps the notes readable while keeping the package focused on code, tests, and reproduction.
+
+## Example interactive demo
+
+The first demo does not need to be perfect. It just needs to make the memory problem obvious.
+
+<CacheBudgetDemo client:load />
+
+## What comes after this
+
+After MiniCache, the next paper track is PrefixKV.
+
+That gives the overall project a clean progression:
+
+1. general note on why cache papers matter
+2. depth-axis compression with MiniCache
+3. token / layer budget allocation with PrefixKV
+
+That order gives the project both:
+
+- a clean systems implementation first
+- a more visual VLM-oriented paper second
+
+## Sources
+
+<ul class="source-list">
+  <li><a href="https://arxiv.org/abs/2405.14366" target="_blank" rel="noreferrer">MiniCache paper (arXiv:2405.14366)</a></li>
+  <li><a href="https://minicache.vmv.re/" target="_blank" rel="noreferrer">MiniCache project page</a></li>
+  <li><a href="https://github.com/AkideLiu/MiniCache" target="_blank" rel="noreferrer">MiniCache GitHub repo</a></li>
+  <li><a href="https://arxiv.org/abs/2412.03409" target="_blank" rel="noreferrer">PrefixKV paper (arXiv:2412.03409)</a></li>
+  <li><a href="https://arxiv.org/abs/2503.12491" target="_blank" rel="noreferrer">CAKE paper (arXiv:2503.12491)</a></li>
+  <li><a href="https://distill.pub/" target="_blank" rel="noreferrer">Distill</a> for article structure and visual explanation style</li>
+  <li><a href="https://mni-ml.github.io/articles/inference/" target="_blank" rel="noreferrer">mni-ml inference article</a> for compact systems writing</li>
+  <li><a href="https://github.com/lucidrains" target="_blank" rel="noreferrer">lucidrains GitHub profile</a> for implementation-repo discipline and README style</li>
+</ul>
+
+</main>

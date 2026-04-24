@@ -19,6 +19,12 @@ pnpm-debug.log*
 
 # macOS-specific files
 .DS_Store
+__pycache__/
+*.pyc
 
 # jetbrains setting folder
 .idea/
+
+# internal planning notes
+PROJECT_DIRECTION.md
+research/
