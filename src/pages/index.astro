@@ -27,49 +27,52 @@ import Layout from "../layouts/Layout.astro";
     </section>
 
     <section class="toc">
+      <div class="label">categories</div>
+      <ul class="category-list">
+        <li>
+          <strong>KV-cache memory</strong>
+          <p>Cache growth, compression axes, retention policies, and decode-time memory pressure.</p>
+        </li>
+        <li>
+          <strong>Paper reproductions</strong>
+          <p>Small implementation tracks that turn one paper mechanism into runnable code.</p>
+        </li>
+        <li>
+          <strong>Visual demos</strong>
+          <p>Animations and interactive components that make the systems behavior easier to inspect.</p>
+        </li>
+        <li>
+          <strong>Benchmarks</strong>
+          <p>Minimal scripts that measure the implemented path before scaling up the experiment.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="toc">
       <div class="label">repos</div>
       <ul>
         <li>
-          <strong>`minicache-pytorch`</strong>
+          <a href="https://github.com/rishabhsai/minicache-pytorch" target="_blank" rel="noreferrer">minicache-pytorch</a>
           <p>Standalone PyTorch package with clean-room primitives, tests, examples, and benchmark scripts.</p>
         </li>
         <li>
-          <strong>`prefixkv-pytorch`</strong>
+          <strong>prefixkv-pytorch</strong>
           <p>Planned next track for token and layer budget allocation in vision-language generation.</p>
         </li>
       </ul>
     </section>
 
     <section class="toc">
-      <div class="label">stack</div>
-      <ul>
-        <li>
-          <strong>Hub:</strong>
-          <p>Astro, MDX, React islands, and Manim for notes, diagrams, and interactive demos.</p>
-        </li>
-        <li>
-          <strong>Repos:</strong>
-          <p>Python packages with `uv`, focused READMEs, tests, and small runnable examples.</p>
-        </li>
-      </ul>
+      <div class="label">next note</div>
+      <p>
+        The next note should be a reproduction report for <strong>minicache-pytorch</strong>: the API, the tensor
+        tests, a small benchmark result, and the exact commands needed to reproduce the implementation locally.
+      </p>
     </section>
   </main>
 </Layout>
 
 <style>
-  .page {
-    width: min(980px, calc(100% - 32px));
-    margin: 0 auto;
-    padding: 56px 0 88px;
-  }
-
-  .eyebrow,
-  .label {
-    color: var(--muted);
-    font-size: 12px;
-    text-transform: uppercase;
-  }
-
   h1 {
     margin: 12px 0 20px;
     max-width: 900px;
@@ -109,6 +112,12 @@ import Layout from "../layouts/Layout.astro";
   .toc a,
   .toc strong {
     color: var(--ink);
+  }
+
+  .toc a {
+    text-decoration: underline;
+    text-decoration-color: rgba(121, 210, 255, 0.45);
+    text-underline-offset: 3px;
   }
 
   .toc p {
