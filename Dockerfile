@@ -12,4 +12,4 @@ RUN npm install -g serve
 
 EXPOSE 7860
 
-CMD ["serve", "-s", "dist", "-l", "7860"]
+CMD ["serve", "dist", "-l", "7860"]

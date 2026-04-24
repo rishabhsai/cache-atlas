@@ -20,6 +20,8 @@ const path = Astro.url.pathname;
 				<nav>
 					<a class:list={{ active: path === "/" }} href="/">Home</a>
 					<a class:list={{ active: path.startsWith("/notes") }} href="/notes">Notes</a>
+					<a href="https://github.com/rishabhsai/minicache-pytorch" target="_blank" rel="noreferrer">Code</a>
+					<a href="https://huggingface.co/spaces/rishabhsai/cache-atlas" target="_blank" rel="noreferrer">Space</a>
 				</nav>
 			</div>
 		</header>
@@ -89,6 +91,8 @@ const path = Astro.url.pathname;
 		display: flex;
 		align-items: center;
 		gap: 14px;
+		flex-wrap: wrap;
+		justify-content: flex-end;
 	}
 
 	nav a {

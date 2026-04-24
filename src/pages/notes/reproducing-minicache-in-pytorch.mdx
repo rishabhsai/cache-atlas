@@ -1,0 +1,172 @@
+---
+layout: ../../layouts/Layout.astro
+title: Reproducing MiniCache in PyTorch - Cache Atlas
+---
+
+<main class="article-shell">
+
+<div class="eyebrow">note 02</div>
+
+# Reproducing MiniCache in PyTorch
+
+MiniCache is useful to study because it compresses the KV cache along the depth axis instead of only asking which old tokens to keep.
+
+The paper target is:
+
+> <a class="inline-link" href="https://arxiv.org/abs/2405.14366" target="_blank" rel="noreferrer">MiniCache: KV Cache Compression in Depth Dimension for Large Language Models</a>
+
+This reproduction does not claim paper parity. I am isolating the core tensor path first: decompose a pair of adjacent layer states, interpolate direction, preserve magnitude, and optionally retain tokens whose adjacent-layer similarity is too low to merge safely.
+
+<div class="meta-grid">
+  <div class="meta-cell">
+    <strong>implementation</strong>
+    <a class="inline-link" href="https://github.com/rishabhsai/minicache-pytorch" target="_blank" rel="noreferrer">minicache-pytorch</a>
+  </div>
+  <div class="meta-cell">
+    <strong>paper</strong>
+    <a class="inline-link" href="https://arxiv.org/abs/2405.14366" target="_blank" rel="noreferrer">arXiv:2405.14366</a>
+  </div>
+  <div class="meta-cell">
+    <strong>scope</strong>
+    tensor primitives, tests, benchmark
+  </div>
+</div>
+
+## What is implemented
+
+The first pass implements the smallest inspectable path:
+
+- magnitude / direction decomposition
+- adjacent-layer direction interpolation
+- reconstruction using the upper-layer magnitude
+- per-token cosine similarity between adjacent layer states
+- retention mask for low-similarity tokens
+- retention-aware adjacent-pair compression
+
+That gives the repo a concrete API instead of only paper commentary.
+
+```python
+import torch
+
+from minicache_pytorch import compress_adjacent_pair_with_retention
+
+lower = torch.randn(2, 16, 64)
+upper = torch.randn(2, 16, 64)
+
+compressed, keep_mask = compress_adjacent_pair_with_retention(
+    lower,
+    upper,
+    alpha=0.5,
+    threshold=0.92,
+)
+```
+
+<figure class="video-figure">
+  <video autoPlay loop muted playsInline controls preload="metadata">
+    <source src="/media/minicache-layer-merge.mp4" type="video/mp4" />
+  </video>
+  <figcaption>
+    The merge path lives between neighboring layers: keep the magnitude stable, move the direction toward a shared representation.
+  </figcaption>
+</figure>
+
+## Retention path
+
+The retention step is the part that keeps this from being a blind average.
+
+If adjacent layers are already similar for a token, the merge path is low risk. If they disagree sharply, that token stays on the original upper-layer path.
+
+```python
+from minicache_pytorch import retention_mask_from_similarity
+
+keep_mask = retention_mask_from_similarity(
+    lower,
+    upper,
+    threshold=0.92,
+)
+```
+
+The current implementation returns both the compressed tensor and the boolean mask, so the caller can inspect how much of the sequence was retained.
+
+<figure class="video-figure">
+  <video autoPlay loop muted playsInline controls preload="metadata">
+    <source src="/media/minicache-retention.mp4" type="video/mp4" />
+  </video>
+  <figcaption>
+    Tokens with unusually low cross-layer similarity are kept out of the merge path.
+  </figcaption>
+</figure>
+
+## Reproduce locally
+
+Clone the implementation repo and run the tests:
+
+```bash
+git clone https://github.com/rishabhsai/minicache-pytorch
+cd minicache-pytorch
+uv sync --extra dev
+uv run --extra dev pytest
+```
+
+Current test coverage is focused on the low-level behavior:
+
+- normalization returns unit vectors
+- magnitude and direction reconstruct the original tensor
+- direction interpolation preserves unit norm
+- compression preserves shape
+- compression keeps the upper-layer magnitude
+- cosine similarity matches simple expected cases
+- low-similarity tokens are marked for retention
+- retained tokens stay on the original upper-layer path
+
+## First benchmark
+
+The benchmark script measures the pairwise path on random tensors shaped like a small batch of cached states:
+
+```bash
+uv run python scripts/bench_pair.py
+```
+
+On my current local run, using tensors with shape `(4, 512, 128)`, the output was:
+
+```txt
+plain compress_adjacent_pair: 0.279 ms
+retention-aware pair path:   0.414 ms
+```
+
+This is not a model-quality benchmark. It is a sanity check for the primitive itself before wiring the method into a fuller cache-compression path.
+
+## What is not implemented yet
+
+The repo does not yet reproduce the full official evaluation stack. Missing pieces include:
+
+- integration with an actual transformer generation loop
+- quality evaluation on downstream tasks
+- layer selection policy across a full model
+- comparison against quantization, sparsity, or token-eviction baselines
+- GPU benchmark tables across realistic sequence lengths
+
+That boundary is intentional. The first goal is a readable primitive with tests. The next goal is to connect that primitive to a real cache object and measure it under more realistic decode conditions.
+
+## Sources
+
+<ul class="source-list">
+  <li><a href="https://arxiv.org/abs/2405.14366" target="_blank" rel="noreferrer">MiniCache paper (arXiv:2405.14366)</a></li>
+  <li><a href="https://minicache.vmv.re/" target="_blank" rel="noreferrer">MiniCache project page</a></li>
+  <li><a href="https://github.com/AkideLiu/MiniCache" target="_blank" rel="noreferrer">Official MiniCache GitHub repo</a></li>
+  <li><a href="https://github.com/rishabhsai/minicache-pytorch" target="_blank" rel="noreferrer">minicache-pytorch reproduction repo</a></li>
+  <li><a href="https://mni-ml.github.io/articles/inference/" target="_blank" rel="noreferrer">mni-ml inference article</a></li>
+</ul>
+
+<nav class="article-nav" aria-label="Article navigation">
+  <a href="/notes/why-kv-cache-papers-matter">
+    <span>Previous</span>
+    <strong>Why KV cache papers matter</strong>
+  </a>
+  <a href="https://github.com/rishabhsai/minicache-pytorch" target="_blank" rel="noreferrer">
+    <span>Code</span>
+    <strong>Open minicache-pytorch</strong>
+  </a>
+</nav>
+
+</main>

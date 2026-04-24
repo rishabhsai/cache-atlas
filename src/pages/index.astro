@@ -5,11 +5,11 @@ import Layout from "../layouts/Layout.astro";
 <Layout title="Cache Atlas">
   <main class="page">
     <div class="eyebrow">research implementation lab</div>
-    <h1>KV-cache and inference papers, studied through code.</h1>
+    <h1>KV-cache and inference papers, studied by building them.</h1>
     <p class="lede">
       Cache Atlas is my public notebook for learning modern inference systems by implementing the core mechanics.
-      Each note explains what I read, what I built, and how to reproduce the experiment instead of treating the paper
-      as a black box.
+      The focus stays specific: KV-cache memory, decode bottlenecks, paper reproductions, and small experiments you can
+      run locally.
     </p>
 
     <section class="toc">
@@ -20,8 +20,8 @@ import Layout from "../layouts/Layout.astro";
           <p>A map of the memory problem that motivated the first implementation.</p>
         </li>
         <li>
-          <a href="/notes/minicache-paper-notes">MiniCache paper notes</a>
-          <p>Depth-axis compression, the implementation boundary, and the pieces I reproduced in PyTorch.</p>
+          <a href="/notes/reproducing-minicache-in-pytorch">Reproducing MiniCache in PyTorch</a>
+          <p>The API, tests, benchmark command, and the exact scope of the current reproduction.</p>
         </li>
       </ol>
     </section>
@@ -65,8 +65,9 @@ import Layout from "../layouts/Layout.astro";
     <section class="toc">
       <div class="label">next note</div>
       <p>
-        The next note should be a reproduction report for <strong>minicache-pytorch</strong>: the API, the tensor
-        tests, a small benchmark result, and the exact commands needed to reproduce the implementation locally.
+        Next up: PrefixKV. The useful version is not just a paper summary; it should isolate the token-retention
+        policy, explain why vision-language prompts stress the cache differently, and define the smallest PyTorch
+        primitive worth implementing.
       </p>
     </section>
   </main>
