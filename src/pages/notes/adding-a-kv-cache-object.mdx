@@ -1,0 +1,154 @@
+---
+layout: ../../layouts/Layout.astro
+title: Adding a KV-cache object - Cache Atlas
+---
+
+<main class="article-shell">
+
+<div class="eyebrow">note 03</div>
+
+# Adding a KV-cache object
+
+The first MiniCache reproduction was a tensor primitive. That was useful, but it still sat below the shape of an inference system.
+
+The next step is a small cache object:
+
+> store per-layer keys and values, then apply the MiniCache pairwise path to a selected adjacent layer pair.
+
+The implementation lives in:
+
+- <a class="inline-link" href="https://github.com/rishabhsai/minicache-pytorch" target="_blank" rel="noreferrer">minicache-pytorch</a>
+
+## The new API
+
+The new object is `LayerKVCache`. It stores key and value tensors with shape:
+
+```txt
+(layers, batch, sequence, hidden_dim)
+```
+
+The compression call is explicit about which adjacent layers are being merged:
+
+```python
+import torch
+
+from minicache_pytorch import LayerKVCache
+
+keys = torch.randn(8, 2, 128, 64)
+values = torch.randn(8, 2, 128, 64)
+cache = LayerKVCache(keys=keys, values=values)
+
+result = cache.compress_layer_pair(
+    lower_layer=4,
+    upper_layer=5,
+    alpha=0.5,
+    threshold=0.98,
+)
+
+compressed_cache = result.cache
+retained_fraction = result.retained_token_fraction
+```
+
+The object does not mutate the original cache. It returns a new cache plus the key/value retention masks.
+
+## Why this is a better boundary
+
+The primitive from the previous note answered:
+
+> can I merge two adjacent layer tensors?
+
+The cache object asks a more useful systems question:
+
+> where would this sit in a decode-time cache path?
+
+That boundary gives the repo a place to grow:
+
+- cache shape validation
+- layer-pair validation
+- memory accounting
+- retained-token reporting
+- future policy logic for selecting layer pairs
+
+It is still small enough to read in one file.
+
+## Reproduce locally
+
+Run the full test suite:
+
+```bash
+git clone https://github.com/rishabhsai/minicache-pytorch
+cd minicache-pytorch
+uv sync --extra dev
+uv run --extra dev pytest
+```
+
+Current result:
+
+```txt
+15 passed
+```
+
+The cache-specific tests cover:
+
+- key/value shape validation
+- minimum cache rank validation
+- shape preservation after compression
+- only the upper layer in the selected pair is updated
+- retained tokens stay on the original upper-layer path
+- non-adjacent layer pairs fail clearly
+- cache byte accounting
+
+## Example output
+
+The new example script creates a fake 8-layer cache, makes layers 4 and 5 partially similar, then compresses that pair:
+
+```bash
+uv run python examples/cache_object.py
+```
+
+Current local output:
+
+```txt
+cache shape: (8, 2, 128, 64)
+cache bytes: 1,048,576
+compressed pair: layers 4 -> 5
+retained token fraction: 0.410
+```
+
+That retained fraction is the important signal. It means the cache path is not blindly compressing every token; the retention mask is visible enough to measure and debug.
+
+## What next
+
+The next note should be a decode benchmark.
+
+The benchmark should vary:
+
+1. sequence length
+2. hidden dimension
+3. retention threshold
+4. number of layer pairs compressed
+
+The output should be a small table, not a wall of prose. The goal is to make the tradeoff visible: how much retention happens, how much extra compute the compression path adds, and where the primitive starts to look too expensive.
+
+After that, the project is ready for the PrefixKV track.
+
+## Sources
+
+<ul class="source-list">
+  <li><a href="https://github.com/rishabhsai/minicache-pytorch" target="_blank" rel="noreferrer">minicache-pytorch</a></li>
+  <li><a href="https://arxiv.org/abs/2405.14366" target="_blank" rel="noreferrer">MiniCache paper (arXiv:2405.14366)</a></li>
+  <li><a href="https://minicache.vmv.re/" target="_blank" rel="noreferrer">MiniCache project page</a></li>
+</ul>
+
+<nav class="article-nav" aria-label="Article navigation">
+  <a href="/notes/reproducing-minicache-in-pytorch">
+    <span>Previous</span>
+    <strong>Reproducing MiniCache in PyTorch</strong>
+  </a>
+  <a href="https://github.com/rishabhsai/minicache-pytorch" target="_blank" rel="noreferrer">
+    <span>Code</span>
+    <strong>Open minicache-pytorch</strong>
+  </a>
+</nav>
+
+</main>

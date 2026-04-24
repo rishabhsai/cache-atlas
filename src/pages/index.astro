@@ -23,6 +23,10 @@ import Layout from "../layouts/Layout.astro";
           <a href="/notes/reproducing-minicache-in-pytorch">Reproducing MiniCache in PyTorch</a>
           <p>The API, tests, benchmark command, and the exact scope of the current reproduction.</p>
         </li>
+        <li>
+          <a href="/notes/adding-a-kv-cache-object">Adding a KV-cache object</a>
+          <p>Moving from tensor primitives toward a decode-time cache interface.</p>
+        </li>
       </ol>
     </section>
 
@@ -65,9 +69,8 @@ import Layout from "../layouts/Layout.astro";
     <section class="toc">
       <div class="label">next note</div>
       <p>
-        Next up: PrefixKV. The useful version is not just a paper summary; it should isolate the token-retention
-        policy, explain why vision-language prompts stress the cache differently, and define the smallest PyTorch
-        primitive worth implementing.
+        Next up: a decode benchmark. The useful version should measure longer sequence lengths, retained-token
+        fraction, and the cost of applying compression across selected layer pairs.
       </p>
     </section>
   </main>
